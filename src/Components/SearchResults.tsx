@@ -13,16 +13,6 @@ export default function SearchResults({
 }: SearchResultsProps) {
   const darkMode = useContext(DarkModeContext);
 
-  const resultsJSX = results.map((result) => (
-    <li key={result.id} style={{ marginBottom: "8px" }}>
-      {result.name}
-      <br />
-      <button onClick={() => onGoToLocation(result.lat, result.lon)}>
-        Go to this location
-      </button>
-    </li>
-  ));
-
   return (
     <div
       style={{
@@ -35,7 +25,22 @@ export default function SearchResults({
       }}
     >
       <h3>Search results</h3>
-      {results.length === 0 ? <p>No results yet.</p> : <ul>{resultsJSX}</ul>}
+
+      {results.length === 0 ? (
+        <p>No results yet.</p>
+      ) : (
+        <ul>
+          {results.map((result) => (
+            <li key={result.id} style={{ marginBottom: "8px" }}>
+              {result.name}
+              <br />
+              <button onClick={() => onGoToLocation(result.lat, result.lon)}>
+                Go to this location
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

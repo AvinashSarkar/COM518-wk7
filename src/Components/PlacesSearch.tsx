@@ -15,21 +15,22 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
   useEffect(() => {
     if (submittedQuery.trim() === "") return;
 
+    console.log("Searching for:", submittedQuery);
     setError("");
 
     fetch(`https://hikar.org/webapp/nomproxy?q=${encodeURIComponent(submittedQuery)}`)
       .then((response) => {
+        console.log("HTTP status:", response.status);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
         return response.json();
       })
       .then((json) => {
-        console.log("Raw search JSON:", json);
+        console.log("Raw JSON:", json);
 
         let cleanedResults: PlaceResult[] = [];
 
-        // Case 1: plain array response
         if (Array.isArray(json)) {
           cleanedResults = json
             .map((item: any, index: number): PlaceResult => ({
@@ -42,15 +43,13 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
               (item: PlaceResult) =>
                 !Number.isNaN(item.lat) && !Number.isNaN(item.lon)
             );
-        }
-        // Case 2: GeoJSON-like response with features
-        else if (json && Array.isArray(json.features)) {
+        } else if (json && Array.isArray(json.features)) {
           cleanedResults = json.features
             .map((feature: any, index: number): PlaceResult => ({
               id: String(
                 feature.properties?.place_id ??
-                  feature.properties?.osm_id ??
-                  index
+                feature.properties?.osm_id ??
+                index
               ),
               name:
                 feature.properties?.display_name ??
@@ -58,11 +57,11 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
                 "Unnamed place",
               lat: Number(
                 feature.properties?.lat ??
-                  feature.geometry?.coordinates?.[1]
+                feature.geometry?.coordinates?.[1]
               ),
               lon: Number(
                 feature.properties?.lon ??
-                  feature.geometry?.coordinates?.[0]
+                feature.geometry?.coordinates?.[0]
               )
             }))
             .filter(
@@ -72,7 +71,6 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
         }
 
         console.log("Cleaned results:", cleanedResults);
-
         onResultsLoaded(cleanedResults);
 
         if (cleanedResults.length === 0) {
@@ -84,7 +82,7 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
         onResultsLoaded([]);
         setError("Search failed.");
       });
-  }, [submittedQuery, onResultsLoaded]);
+  }, [submittedQuery]);
 
   return (
     <div
@@ -102,7 +100,7 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
           setPlaceName(e.target.value)
         }
       />
-      <button onClick={() => setSubmittedQuery(placeName)}>Search</button>
+      <button onClick={() => setSubmittedQuery(placeName.trim())}>Search</button>
 
       {error !== "" && <p>{error}</p>}
     </div>

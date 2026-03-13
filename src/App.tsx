@@ -21,6 +21,7 @@ export default function App() {
   }
 
   function updateResults(newResults: PlaceResult[]) {
+    console.log("App got results:", newResults);
     setResults(newResults);
   }
 
@@ -48,6 +49,8 @@ export default function App() {
         <ModeChooser mode={mode} modeUpdated={setMode} />
 
         <PlacesSearch onResultsLoaded={updateResults} />
+
+        <p>Results count: {results.length}</p>
 
         <Map
           lat={lat}
