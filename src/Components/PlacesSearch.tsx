@@ -15,12 +15,15 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
   useEffect(() => {
     if (submittedQuery.trim() === "") return;
 
-    console.log("Searching for:", submittedQuery);
     setError("");
 
-    fetch(`https://hikar.org/webapp/nomproxy?q=${encodeURIComponent(submittedQuery)}`)
+    const controller = new AbortController();
+
+    fetch(
+      `https://hikar.org/webapp/nomproxy?q=${encodeURIComponent(submittedQuery)}`,
+      { signal: controller.signal }
+    )
       .then((response) => {
-        console.log("HTTP status:", response.status);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -31,6 +34,7 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
 
         let cleanedResults: PlaceResult[] = [];
 
+        // Case 1: response is already an array
         if (Array.isArray(json)) {
           cleanedResults = json
             .map((item: any, index: number): PlaceResult => ({
@@ -43,13 +47,29 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
               (item: PlaceResult) =>
                 !Number.isNaN(item.lat) && !Number.isNaN(item.lon)
             );
-        } else if (json && Array.isArray(json.features)) {
+        }
+        // Case 2: response has pois[]
+        else if (json && Array.isArray(json.pois)) {
+          cleanedResults = json.pois
+            .map((item: any, index: number): PlaceResult => ({
+              id: String(item.id ?? item.place_id ?? item.osm_id ?? index),
+              name: item.name ?? item.display_name ?? "Unnamed place",
+              lat: Number(item.lat),
+              lon: Number(item.lon)
+            }))
+            .filter(
+              (item: PlaceResult) =>
+                !Number.isNaN(item.lat) && !Number.isNaN(item.lon)
+            );
+        }
+        // Case 3: GeoJSON-like response with features[]
+        else if (json && Array.isArray(json.features)) {
           cleanedResults = json.features
             .map((feature: any, index: number): PlaceResult => ({
               id: String(
                 feature.properties?.place_id ??
-                feature.properties?.osm_id ??
-                index
+                  feature.properties?.osm_id ??
+                  index
               ),
               name:
                 feature.properties?.display_name ??
@@ -57,11 +77,11 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
                 "Unnamed place",
               lat: Number(
                 feature.properties?.lat ??
-                feature.geometry?.coordinates?.[1]
+                  feature.geometry?.coordinates?.[1]
               ),
               lon: Number(
                 feature.properties?.lon ??
-                feature.geometry?.coordinates?.[0]
+                  feature.geometry?.coordinates?.[0]
               )
             }))
             .filter(
@@ -78,11 +98,17 @@ export default function PlacesSearch({ onResultsLoaded }: PlacesSearchProps) {
         }
       })
       .catch((err) => {
-        console.error("Search error:", err);
-        onResultsLoaded([]);
-        setError("Search failed.");
+        if (err.name !== "AbortError") {
+          console.error("Search error:", err);
+          onResultsLoaded([]);
+          setError("Search failed.");
+        }
       });
-  }, [submittedQuery]);
+
+    return () => {
+      controller.abort();
+    };
+  }, [submittedQuery]); // <-- leave only submittedQuery here
 
   return (
     <div
